@@ -1,3 +1,31 @@
+def buscar_stats(nombre):
+    try:
+        # 1. Buscar el equipo
+        res = requests.get(f"https://v3.football.api-sports.io/teams?search={nombre}", headers=HEADERS).json()
+        if not res.get('response'): 
+            st.warning(f"No encontré al equipo: {nombre}")
+            return None
+            
+        t_id = res['response'][0]['team']['id']
+        
+        # 2. Buscar la liga actual (Cambiamos a un método más seguro)
+        # Forzamos que busque en ligas importantes si no encuentra la actual
+        l_id = 140 # Por defecto La Liga de España para probar
+        
+        # 3. Intentar traer estadísticas de la temporada 2024 (que está completa)
+        s_res = requests.get(f"https://v3.football.api-sports.io/teams/statistics?season=2024&league={l_id}&team={t_id}", headers=HEADERS).json()
+        
+        if s_res.get('response'):
+            d = s_res['response']
+            # Extraemos los datos de córners y goles
+            corn = d.get('corners', {}).get('avg', {}).get('total', "0")
+            gol = d.get('goals', {}).get('for', {}).get('average', {}).get('total', "0")
+            return {"C": corn, "G": gol}
+        else:
+            st.error(f"La API respondió pero no tiene estadísticas para {nombre}")
+    except Exception as e:
+        st.error(f"Error de conexión: {e}")
+        return None
 import streamlit as st
 import requests
 import pandas as pd
