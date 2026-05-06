@@ -1,3 +1,56 @@
+import streamlit as st
+import requests
+import pandas as pd
+import os
+
+# Configuración
+API_KEY = os.getenv('API_SPORTS_KEY')
+HEADERS = {'x-apisports-key': API_KEY}
+
+st.set_page_config(page_title="Analizador de Parleys", layout="wide")
+st.title("⚽ Tu Analizador de Parleys")
+st.write("Solo escribe los nombres y yo busco los promedios.")
+
+# FILA PARA LOS DOS EQUIPOS
+col1, col2 = st.columns(2)
+
+with col1:
+    equipo1 = st.text_input("Equipo Local:", "Real Madrid")
+with col2:
+    equipo2 = st.text_input("Equipo Visitante:", "Barcelona")
+
+def obtener_data(nombre):
+    # Paso 1: Buscar ID del equipo
+    url = f"https://v3.football.api-sports.io/teams?search={nombre}"
+    res = requests.get(url, headers=HEADERS).json()
+    if res.get('response'):
+        t_id = res['response'][0]['team']['id']
+        # Paso 2: Traer estadísticas (usamos temporada 2024 que está completa)
+        # Probamos con una liga común, si no, busca la liga actual
+        url_s = f"https://v3.football.api-sports.io/teams/statistics?season=2024&league=140&team={t_id}"
+        stats = requests.get(url_s, headers=HEADERS).json()
+        if stats.get('response'):
+            d = stats['response']
+            return {
+                "Corners": d['corners']['avg']['total'],
+                "Goles": d['goals']['for']['average']['total'],
+                "Tarjetas": d['cards']['yellow']['0-15']['total'] or "N/A" # Ejemplo de tarjetas
+            }
+    return None
+
+if st.button('🔥 LLENAR ANÁLISIS'):
+    data1 = obtener_data(equipo1)
+    data2 = obtener_data(equipo2)
+    
+    if data1 and data2:
+        tabla = [
+            {"Mercado": "Promedio Córners", equipo1: data1['Corners'], equipo2: data2['Corners']},
+            {"Mercado": "Promedio Goles", equipo1: data1['Goles'], equipo2: data2['Goles']}
+        ]
+        st.table(pd.DataFrame(tabla))
+        st.success("¡Análisis completado para tu parley!")
+    else:
+        st.error("No pude encontrar datos de uno de los equipos. Revisa que estén bien escritos.")
 
 import streamlit as st
 import requests
